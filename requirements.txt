@@ -1,0 +1,2 @@
+# Dépendances Python
+# fastapi, uvicorn, sqlalchemy, pydantic, langchain, pydantic-settings, etc.
