@@ -1,5 +1,5 @@
 import pytest
-from unittest import patch, MagicMock
+from unittest.mock import patch, MagicMock
 import os
 
 from app.services.pdf_loader import load_pdf
@@ -25,7 +25,7 @@ def test_load_pdf_success(mock_loader_class, mock_exists):
     assert result[1].page_content == "Contenu de la page 2"
     
     mock_loader_class.assert_called_once()
-    mock_loader_instance.assert_called_once()
+    mock_loader_instance.load.assert_called_once()
     
 
 @patch(f"{MODULE_PATH}.os.path.exists")
