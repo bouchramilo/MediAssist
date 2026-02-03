@@ -1,21 +1,4 @@
-# Image du backend FastAPI
-
-# Build stage
-FROM python:3.10-slim as builder
-
-WORKDIR /app
-
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc libpq-dev && \
-    rm -rf /var/lib/apt/lists/*
-
-COPY requirements.txt .
-RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.txt
-
-# Final stage
+# Image unique pour éviter le surcoût du multi-stage lors du dev
 FROM python:3.10-slim
 
 WORKDIR /app
@@ -23,18 +6,22 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
+# Installation des dépendances système
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends libpq-dev && \
+    apt-get install -y --no-install-recommends gcc libpq-dev && \
     rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/wheels /wheels
-COPY --from=builder /app/requirements.txt .
+# Copie des requirements
+COPY requirements.txt .
 
-RUN pip install --no-cache /wheels/*
+# Installation optimisée avec cache PIP
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements.txt
 
+# Copie du code source
 COPY . .
 
-# Create a non-root user
+# Création utilisateur non-root
 RUN addgroup --system app && adduser --system --group app
 USER app
 
