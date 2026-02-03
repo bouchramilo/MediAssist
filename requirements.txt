@@ -12,6 +12,7 @@ python-dotenv>=1.0.1
 # LangChain & AI Ecosystem
 langchain
 langchain-community
+langchain-experimental
 langchain-ollama
 langchain-huggingface
 langchain-chroma
