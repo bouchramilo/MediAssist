@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.config import settings
+from app.config.config import settings
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -14,3 +14,9 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+
+
+@app.get("/test")
+async def test():
+    return services.vector_db.get_collection_names()

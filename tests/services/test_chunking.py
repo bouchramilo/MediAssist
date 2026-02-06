@@ -4,12 +4,7 @@ from app.services.chunking import split_documents
 
 MODULE_PATH = "app.services.chunking"
 
-@pytest.fixture
-def mock_docs():
-    doc1 = MagicMock()
-    doc1.page_content = "Ceci est un premier texte de test."
-    doc1.metadata = {"source": "pdf1"}
-    return [doc1]
+
 
 @patch(f"{MODULE_PATH}.get_embeddings")
 @patch(f"{MODULE_PATH}.SemanticChunker")
