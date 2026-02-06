@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     QDRANT_URL: str = "http://localhost:6333"
     EMBEDDING_MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"
     
+    # Ollama Configuration
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "llama3.1"
     
     ENVIRONMENT: str = "dev"
     
