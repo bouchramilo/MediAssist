@@ -11,5 +11,7 @@ langchain
 langchain-community
 langchain-experimental
 langchain-ollama
+langchain-core
 qdrant-client
 langchain-qdrant
+pypdf

@@ -1,45 +1,62 @@
 import pytest
-from unittest.mock import patch, MagicMock
-from app.services.chunking import split_documents
+from textwrap import dedent
+try:
+    from langchain_core.documents import Document
+except ImportError:
+    from langchain.schema import Document
+from app.services.chunking import split_documents, estimate_tokens, split_by_paragraph, chunk_markdown_document
 
-MODULE_PATH = "app.services.chunking"
+def test_estimate_tokens():
+    text = "Hello world this is a test"
+    assert estimate_tokens(text) == 6
+    assert estimate_tokens("") == 0
 
+def test_split_by_paragraph():
+    text = "Para1 " * 100 + "\n\n" + "Para2 " * 100
+    chunks = split_by_paragraph(text, max_tokens=50, overlap=10)
+    assert len(chunks) > 1
+    assert isinstance(chunks[0], str)
 
-
-@patch(f"{MODULE_PATH}.get_embeddings")
-@patch(f"{MODULE_PATH}.SemanticChunker")
-def test_split_documents_success(mock_splitter_class, mock_get_emb, mock_docs):
+def test_chunk_markdown_document():
+    text = dedent("""
+    # Chapter 1
     
+    ## Section 1
+    Some content here.
     
-    mock_splitter_instance = mock_splitter_class.return_value
+    ## Section 2
+    More content here.
+    """).strip()
     
-    chunk1 = MagicMock(page_content="Partie 1", metadata={"source": "pdf1"})
-    chunk2 = MagicMock(page_content="Partie 2", metadata={"source": "pdf1"})
-    mock_splitter_instance.split_documents.return_value = [chunk1, chunk2]
+    chunks = chunk_markdown_document(text, source="test.pdf", page=1)
+    
+    assert len(chunks) == 3
+    
+    assert chunks[0]["metadata"]["chapter"] == "Chapter 1"
+    assert chunks[0]["metadata"]["section"] is None
+    
+    assert chunks[1]["metadata"]["chapter"] == "Chapter 1"
+    assert chunks[1]["metadata"]["section"] == "Section 1"
+    
+    assert chunks[2]["metadata"]["section"] == "Section 2"
+    assert chunks[0]["metadata"]["chunk_type"] == "hierarchical"
 
-    result = split_documents(mock_docs)
-
-    assert len(result) == 2
-    assert result[0].metadata["chunk_id"] == 0
-    assert result[1].metadata["chunk_id"] == 1
-    assert result[0].metadata["chunk_type"] == "semantic"
-    assert "chunk_length" in result[0].metadata
+def test_split_documents_success():
+    doc = Document(
+        page_content="# Title\n\n## Section 1\nContent.\n\n## Section 2\nContent.",
+        metadata={"source": "doc1", "page": 5}
+    )
     
-    mock_get_emb.assert_called_once()
-    mock_splitter_class.assert_called_once()
+    results = split_documents([doc])
+    
+    assert len(results) == 3
+    assert isinstance(results[0], Document)
+    assert results[0].metadata["source"] == "doc1"
+    assert results[0].metadata["chapter"] == "Title"
+    assert results[0].metadata["section"] is None
+    
+    assert results[1].metadata["section"] == "Section 1"
 
 def test_split_documents_empty_input():
-    """Vérifie que la fonction gère une liste vide sans planter."""
     result = split_documents([])
     assert result == []
-
-@patch(f"{MODULE_PATH}.get_embeddings")
-def test_split_documents_error(mock_get_emb, mock_docs):
-    """Vérifie qu'une RuntimeError est levée en cas d'échec interne."""
-    
-    mock_get_emb.side_effect = Exception("Modèle introuvable")
-
-    with pytest.raises(RuntimeError) as excinfo:
-        split_documents(mock_docs)
-    
-    assert "Chunking failed" in str(excinfo.value)
