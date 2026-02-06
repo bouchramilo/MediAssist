@@ -1,30 +1,30 @@
-# Image unique pour éviter le surcoût du multi-stage lors du dev
 FROM python:3.10-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
 
 WORKDIR /app
 
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
-
-# Installation des dépendances système
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends gcc libpq-dev && \
-    rm -rf /var/lib/apt/lists/*
-
-# Copie des requirements
+RUN pip install --upgrade pip
 COPY requirements.txt .
+RUN pip install -r requirements.txt
 
-# Installation optimisée avec cache PIP
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install -r requirements.txt
+# Copier d'abord les fichiers nécessaires au build
+COPY app/ ./app/
+COPY data/ ./data/
 
-# Copie du code source
-COPY . .
+# Copier les autres fichiers seulement si nécessaires
+COPY .env.example .env.example
+# COPY .dockerignore .dockerignore
+COPY docker-compose.yml docker-compose.yml
+COPY README.md README.md
 
-# Création utilisateur non-root
-RUN addgroup --system app && adduser --system --group app
-USER app
-
+# Exposer le port
 EXPOSE 8000
 
+# Commande de démarrage
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

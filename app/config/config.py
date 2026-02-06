@@ -14,6 +14,15 @@ class Settings(BaseSettings):
     POSTGRES_DB: str
     DATABASE_URL: str | None = None
     
+    # Qdrant Configuration
+    QDRANT_HOST: str = "localhost"
+    QDRANT_PORT: int = 6333
+    QDRANT_API_KEY: str | None = None
+    QDRANT_COLLECTION_NAME: str = "mediassist_collection"
+    QDRANT_URL: str = "http://localhost:6333"
+    EMBEDDING_MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"
+    
+    
     ENVIRONMENT: str = "dev"
     
     model_config = SettingsConfigDict(

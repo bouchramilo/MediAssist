@@ -50,12 +50,9 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
     - name: Test with pytest
-      env:
-        DATABASE_URL: postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@localhost:5432/${{ secrets.POSTGRES_DB }}
-        SECRET_KEY: test_secret_key
-        ENVIRONMENT: test
       run: |
-        pytest
+        docker compose -f docker-compose.yml build backend
+        docker compose -f docker-compose.yml run --rm backend pytest tests/
 
   build-docker:
     runs-on: ubuntu-latest
