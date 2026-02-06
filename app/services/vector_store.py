@@ -7,12 +7,9 @@ from app.config import settings
 from app.utils.logger import AppLogger
 from typing import List, Optional, Dict
 
-# CORRECTION ICI : Utilisez langchain_core au lieu de langchain.schema
 try:
-    # Pour LangChain >= 0.1.0
     from langchain_core.documents import Document
 except ImportError:
-    # Fallback pour les versions plus anciennes
     try:
         from langchain.schema import Document
     except ImportError:
