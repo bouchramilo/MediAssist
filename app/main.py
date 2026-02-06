@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from app.config.config import settings
 from app.services.chunking import split_documents
 from app.services.pdf_loader import load_pdf
+from app.services.llm import create_llm
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -57,6 +58,20 @@ async def get_documents(limit: int = 10):
                     "metadata": doc.metadata
                 } for doc in limited_docs
             ]
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)} 
+
+
+@app.get("/llmmodel")
+async def get_documents(limit: int = 10):
+    try:
+        model = create_llm()
+        
+        
+        return {
+            "status": "success",
+            "model": model,
         }
     except Exception as e:
         return {"status": "error", "message": str(e)} 
