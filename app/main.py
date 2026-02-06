@@ -20,8 +20,8 @@ async def health_check():
 
 
 
-@app.get("/test")
-async def test():
+@app.get("/chunks")
+async def get_chunks():
     try:
         documents = load_pdf()
         chunks = split_documents(documents=documents)
@@ -34,6 +34,28 @@ async def test():
                     "content": chunk.page_content,
                     "metadata": chunk.metadata
                 } for chunk in chunks
+            ]
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)} 
+
+
+@app.get("/documents")
+async def get_documents(limit: int = 10):
+    try:
+        documents = load_pdf()
+        
+        limited_docs = documents[:limit]
+        
+        return {
+            "status": "success",
+            "total_count": len(documents),
+            "returned_count": len(limited_docs),
+            "documents": [
+                {
+                    "content": doc.page_content,
+                    "metadata": doc.metadata
+                } for doc in limited_docs
             ]
         }
     except Exception as e:
