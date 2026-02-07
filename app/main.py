@@ -3,6 +3,7 @@ from app.config.config import settings
 from app.services.chunking import split_documents
 from app.services.pdf_loader import load_pdf
 from app.services.llm import create_llm
+from app.services.chat import ask_question
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -64,7 +65,7 @@ async def get_documents(limit: int = 10):
 
 
 @app.get("/llmmodel")
-async def get_documents(limit: int = 10):
+async def get_documents():
     try:
         model = create_llm()
         
@@ -72,6 +73,20 @@ async def get_documents(limit: int = 10):
         return {
             "status": "success",
             "model": model,
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)} 
+
+
+@app.get("/query")
+async def get_documents(question:str = "Hello , can you help me to fix a machine medical?"):
+    try:
+        response = await ask_question(question)
+        
+        
+        return {
+            "status": "success",
+            "response": response,
         }
     except Exception as e:
         return {"status": "error", "message": str(e)} 

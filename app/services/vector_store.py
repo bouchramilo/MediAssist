@@ -1,4 +1,4 @@
-from langchain_community.vectorstores import Qdrant
+from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams
 from qdrant_client.http import models
@@ -48,7 +48,7 @@ def store_embeddings(chunks: List[Document]):
         embeddings = get_embedding_function()
         
         # Stocker avec LangChain
-        Qdrant.from_documents(
+        QdrantVectorStore.from_documents(
             documents=chunks,
             embedding=embeddings,
             url=settings.QDRANT_URL,
@@ -67,10 +67,10 @@ def get_vector_store():
     """Récupère le vector store pour la recherche"""
     embeddings = get_embedding_function()
     
-    return Qdrant(
+    return QdrantVectorStore(
         client=QdrantClient(url=settings.QDRANT_URL),
         collection_name=settings.QDRANT_COLLECTION_NAME,
-        embeddings=embeddings
+        embedding=embeddings
     )
 
 def search_semantic(query: str, top_k: int = 10, filters: Optional[Dict] = None):
