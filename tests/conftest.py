@@ -22,7 +22,7 @@ def mock_qdrant_client():
 @pytest.fixture
 def mock_langchain_qdrant():
     """Fixture mockant l'intégration LangChain Qdrant."""
-    with patch('app.services.vector_store.Qdrant') as mock:
+    with patch('app.services.vector_store.QdrantVectorStore') as mock:
         yield mock
 
 @pytest.fixture

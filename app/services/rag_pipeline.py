@@ -1,4 +1,4 @@
-from langchain_core.runnables import RunnablePassthrough
+from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 from langchain_core.output_parsers import StrOutputParser
 from app.services.prompt import get_prompt
 from app.services.llm import create_llm
@@ -14,17 +14,18 @@ logger = AppLogger.get_logger(__name__)
 def create_rag_chain(retriever, llm):
     prompt = get_prompt()
     
-    rag_chain = (
-        {
-            "context": retriever | format_docs,
-            "question": RunnablePassthrough()
-        }
+    rag_chain_from_docs = (
+        RunnablePassthrough.assign(context=(lambda x: format_docs(x["context"])))
         | prompt
         | llm
         | StrOutputParser()
     )
-    
-    return rag_chain
+
+    rag_chain_with_source = RunnableParallel(
+        {"context": retriever, "question": RunnablePassthrough()}
+    ).assign(answer=rag_chain_from_docs)
+
+    return rag_chain_with_source
 
 def initialize_rag_system(force_recreate_db=False):
     logger.info("INITIALIZING RAG SYSTEM")
