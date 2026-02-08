@@ -5,7 +5,11 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "MediAssist API"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
+    
+    # Security
     SECRET_KEY: str
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8
     
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
@@ -24,7 +28,7 @@ class Settings(BaseSettings):
     
     # Ollama Configuration
     OLLAMA_BASE_URL: str = "http://localhost:11434"
-    OLLAMA_MODEL: str = "llama3.1"
+    OLLAMA_MODEL: str = "llama3.1:latest"
     
     ENVIRONMENT: str = "dev"
     
@@ -38,5 +42,11 @@ class Settings(BaseSettings):
         if not self.DATABASE_URL:
             self.DATABASE_URL = f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         return self
+    
+    model_config = SettingsConfigDict(
+        env_file=".env", 
+        case_sensitive=True,
+        extra="allow"
+    )
 
 settings = Settings()
