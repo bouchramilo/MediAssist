@@ -15,3 +15,6 @@ langchain-core
 qdrant-client
 langchain-qdrant
 pypdf
+email-validator
+passlib==1.7.4
+bcrypt==3.2.2
