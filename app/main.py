@@ -4,12 +4,18 @@ from app.services.chunking import split_documents
 from app.services.pdf_loader import load_pdf
 from app.services.llm import create_llm
 from app.services.chat import ask_question
+from app.api import user
+from app.config.database import init_db
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
+
+@app.on_event("startup")
+def on_startup():
+    init_db()
 
 @app.get("/")
 async def root():
@@ -20,6 +26,8 @@ async def health_check():
     return {"status": "healthy"}
 
 
+
+app.include_router(user.router)
 
 
 @app.get("/chunks")
