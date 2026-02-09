@@ -1,6 +1,6 @@
 # Schémas pour inscription / login
 from typing import Optional
-from pydantic import BaseModel, EmailStr, model_validator, Field
+from pydantic import BaseModel, EmailStr, model_validator, Field, ConfigDict
 from datetime import datetime
 from typing_extensions import Self
 
@@ -67,8 +67,7 @@ class UserInDBBase(BaseModel):
     role: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Additional properties to return via API

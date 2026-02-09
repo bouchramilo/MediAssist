@@ -5,19 +5,23 @@ from app.api import user, admin, chat, documents
 from app.config.database import init_db
 from app.services.vector_store import create_qdrant_collection
 
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    version=settings.VERSION,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
-)
+from contextlib import asynccontextmanager
 
-@app.on_event("startup")
-def on_startup():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     init_db()
     try:
         create_qdrant_collection()
     except Exception as e:
         print(f"Error initializing Qdrant: {e}")
+    yield
+
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    version=settings.VERSION,
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    lifespan=lifespan
+)
 
 @app.get("/")
 async def root():

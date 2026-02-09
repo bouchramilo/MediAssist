@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     
     # Ollama Configuration
     OLLAMA_BASE_URL: str = "http://localhost:11434"
-    OLLAMA_MODEL: str = "llama3.1:latest"
+    OLLAMA_MODEL: str = "llama3.1"
     
     ENVIRONMENT: str = "dev"
     

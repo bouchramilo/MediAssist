@@ -1,6 +1,6 @@
 # Schémas pour requête utilisateur et réponse RAG
 from typing import Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 
 
@@ -25,8 +25,7 @@ class QueryUpdate(BaseModel):
 class QueryInDBBase(QueryBase):
     id: int
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class Query(QueryInDBBase):

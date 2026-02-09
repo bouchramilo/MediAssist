@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 from app.services.llm import create_llm
 
-@patch("app.services.llm.OllamaLLM")
+@patch("app.services.llm.ChatOllama")
 @patch("app.services.llm.settings")
 def test_create_llm_success(mock_settings, mock_ollama_class):
     # Mock settings
@@ -18,13 +18,12 @@ def test_create_llm_success(mock_settings, mock_ollama_class):
         base_url="http://test-ollama:11434",
         temperature=0.2,
         num_predict=1024,
-        num_ctx=4096,
         top_p=0.9,
-        repeat_penalty=1.1
+        repeat_penalty=1.1,
     )
     assert llm == mock_ollama_class.return_value
 
-@patch("app.services.llm.OllamaLLM")
+@patch("app.services.llm.ChatOllama")
 @patch("app.services.llm.settings")
 def test_create_llm_failure(mock_settings, mock_ollama_class):
     # Mock settings
