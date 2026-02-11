@@ -14,6 +14,7 @@ async def lifespan(app: FastAPI):
         create_qdrant_collection()
     except Exception as e:
         print(f"Error initializing Qdrant: {e}")
+        
     yield
 
 app = FastAPI(
