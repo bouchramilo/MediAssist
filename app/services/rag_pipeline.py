@@ -8,8 +8,7 @@ from app.services.chunking import split_documents
 from app.services.pdf_loader import load_pdf
 from app.services.utils import format_docs
 from app.utils.logger import AppLogger
-from app.mlops.tracking import log_rag_experiment
-import mlflow
+
 
 logger = AppLogger.get_logger(__name__)
 
@@ -34,19 +33,18 @@ def initialize_rag_system(force_recreate_db=False):
     logger.info("INITIALIZING RAG SYSTEM")
 
     # Initialize MLOps Tracking
-    mlflow_logger, run = log_rag_experiment(run_name="rag_pipeline")
     
-    mlflow_logger.log_rag_config({"force_recreate_db": force_recreate_db})
+    
 
     if force_recreate_db:
         logger.info("Loading documents...")
         documents = load_pdf()
-        mlflow_logger.log_metrics({"nb_documents_loaded": len(documents)})
+        # mlflow_logger.log_metrics({"nb_documents_loaded": len(documents)})
         print(f"🚩==========> nb_documents_loaded : ", len(documents))
         
         logger.info(f"Splitting {len(documents)} documents...")
         chunks = split_documents(documents)
-        mlflow_logger.log_metrics({"nb_chunks_created": len(chunks)})
+        # mlflow_logger.log_metrics({"nb_chunks_created": len(chunks)})
         print(f"🚩==========> nb_chunks_created : ", len(chunks))
         
         logger.info("Storing embeddings in Qdrant...")

@@ -4,30 +4,15 @@ from app.mlops.mlflow_logger import MLflowLogger
 from app.config.config import settings
 from app.services.chunking import DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP
 
-# Global variables
-RAG_RUN_ID: Optional[str] = None
-_logger_instance: Optional[MLflowLogger] = None
-
-def get_current_logger() -> Optional[MLflowLogger]:
-    return _logger_instance
-
-def log_rag_experiment(run_name: str = "rag_pipeline") -> Tuple[MLflowLogger, mlflow.ActiveRun]:
+def create_query_run(run_name_prefix: str = "query") -> Tuple[MLflowLogger, mlflow.ActiveRun]:
     """
-    Initialise une run MLflow et logge toute la configuration du pipeline RAG.
-    Utilise les paramètres définis dans chunking et config.
+    Initialise une NOUVELLE run MLflow pour une requête spécifique.
+    Logge toute la configuration du pipeline RAG pour cette run.
     """
-    global RAG_RUN_ID, _logger_instance
+    logger_instance = MLflowLogger(experiment_name="RAG_MediAssist")
     
-    if _logger_instance and RAG_RUN_ID:
-        # If already initialized, return existing
-        return _logger_instance, mlflow.active_run()
-
-    _logger_instance = MLflowLogger(experiment_name="RAG_MediAssist")
-    
-    # Start run
-    run = _logger_instance.start_run(run_name=run_name)
-    RAG_RUN_ID = run.info.run_id
-
+    # Start run with a dynamic name or let MLflow handle it
+    run = logger_instance.start_run(run_name=run_name_prefix)
     
     # Define RAG Configuration dynamically
     rag_config = {
@@ -44,7 +29,7 @@ def log_rag_experiment(run_name: str = "rag_pipeline") -> Tuple[MLflowLogger, ml
         # Embedding
         "embedding_provider": "ollama",
         "embedding_model": settings.EMBEDDING_MODEL_NAME,
-        "embedding_dimension": 384, # Assumed for connection check, strictly ideally dynamic but acceptable here
+        "embedding_dimension": 384,
         "embedding_normalization": True,
         
         # Retrieval
@@ -61,7 +46,7 @@ def log_rag_experiment(run_name: str = "rag_pipeline") -> Tuple[MLflowLogger, ml
         "llm_template": "rag_prompt_v1"
     }
     
-    # Log all params
-    _logger_instance.log_rag_config(rag_config)
+    # Log all params for THIS run
+    logger_instance.log_rag_config(rag_config)
     
-    return _logger_instance, run
+    return logger_instance, run

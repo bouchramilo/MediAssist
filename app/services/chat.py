@@ -4,6 +4,7 @@ from app.mlops.evaluation import evaluate_rag
 
 from app.mlops import tracking
 import mlflow
+from datetime import datetime
 
 logger = AppLogger.get_logger(__name__)
 
@@ -29,40 +30,47 @@ async def ask_question(question: str):
         sources = list(set(sources))
         
         # MLOps: Evaluation & Logging
+        query_run = None
+        mlflow_logger = None
         try:
-            # Debug: Attempting MLOps logging
-            logger.info(f"DEBUG: Attempting MLOps logging. RAG_RUN_ID={tracking.RAG_RUN_ID}")
+            # Create a dedicated run for this query
+            mlflow_logger, query_run = tracking.create_query_run(run_name_prefix=f"query_{datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}")
+            run_id = query_run.info.run_id
             
-            mlflow_logger = tracking.get_current_logger()
+            logger.info(f"DEBUG: MLOps Run started. Run ID: {run_id}")
             
-            if tracking.RAG_RUN_ID and mlflow_logger:
-                chunk_texts = [doc.page_content for doc in source_docs]
-                
-                # Evaluate
-                logger.info("DEBUG: Starting DeepEval evaluation...")
-                metrics = evaluate_rag(
-                    query=question,
-                    response=answer,
-                    context=chunk_texts
-                )
-                logger.info(f"DEBUG: Evaluation complete. Metrics: {metrics}")
-                
-                # Log to MLflow using the persistent logger
-                print(f"DEBUG: Logging metrics to MLflow run {tracking.RAG_RUN_ID}: {metrics}")
-                mlflow_logger.log_metrics(metrics)
-                logger.info("DEBUG: Metrics logged to MLflow.")
-                
-                # Log conversation pair
-                artifact_filename = f"conversation_{tracking.RAG_RUN_ID}.txt"
-                print(f"DEBUG: Logging conversation artifact: {artifact_filename}")
-                mlflow_logger.log_text(f"Q: {question}\nA: {answer}", artifact_filename)
-            else:
-                logger.warning("No active RAG run found (tracking.RAG_RUN_ID is None). Skipping logging.")
+            chunk_texts = [doc.page_content for doc in source_docs]
+            
+            # Evaluate
+            logger.info("DEBUG: Starting DeepEval evaluation...")
+            metrics = evaluate_rag(
+                query=question,
+                response=answer,
+                context=chunk_texts
+            )
+            logger.info(f"DEBUG: Evaluation complete. Metrics: {metrics}")
+            
+            # Log to MLflow
+            print(f"DEBUG: Logging metrics to MLflow run {run_id}: {metrics}")
+            mlflow_logger.log_metrics(metrics)
+            
+            # Log conversation pair
+            artifact_filename = "conversation.txt"
+            print(f"DEBUG: Logging conversation artifact: {artifact_filename}")
+            mlflow_logger.log_text(f"Q: {question}\nA: {answer}", artifact_filename)
                 
         except Exception as e:
             logger.warning(f"MLOps Evaluation failed: {e}")
             import traceback
             logger.warning(traceback.format_exc())
+            
+        finally:
+            # Ensure run is ended
+            if mlflow_logger:
+                mlflow_logger.end_run()
+                logger.info("DEBUG: MLOps Run ended.")
+
+                
 
         return {
             "answer": answer,

@@ -15,13 +15,6 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"Error initializing Qdrant: {e}")
         
-    try:
-        from app.mlops.tracking import log_rag_experiment
-        log_rag_experiment()
-        print("RAG Logging initialized.")
-    except Exception as e:
-        print(f"Error initializing RAG logging: {e}")
-        
     yield
 
 app = FastAPI(
