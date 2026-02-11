@@ -47,3 +47,6 @@ class MLflowLogger:
             self.client.log_text(self.run_id, text, artifact_file)
         else:
             mlflow.log_text(text, artifact_file)
+
+
+logger = MLflowLogger(experiment_name="RAG_MediAssist")

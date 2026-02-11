@@ -1,44 +1,56 @@
+from typing import Optional, Tuple, Dict, Any
+import mlflow
 from app.mlops.mlflow_logger import MLflowLogger
 from app.config.config import settings
-from typing import Dict, Any
+from app.services.chunking import DEFAULT_CHUNK_SIZE, DEFAULT_CHUNK_OVERLAP
 
-# Global variable to store the current RAG run ID
-RAG_RUN_ID = None
+# Global variables
+RAG_RUN_ID: Optional[str] = None
+_logger_instance: Optional[MLflowLogger] = None
 
-def log_rag_experiment(run_name: str = "rag_pipeline"):
+def get_current_logger() -> Optional[MLflowLogger]:
+    return _logger_instance
+
+def log_rag_experiment(run_name: str = "rag_pipeline") -> Tuple[MLflowLogger, mlflow.ActiveRun]:
     """
     Initialise une run MLflow et logge toute la configuration du pipeline RAG.
+    Utilise les paramètres définis dans chunking et config.
     """
-    global RAG_RUN_ID
-    logger = MLflowLogger(experiment_name="RAG_MediAssist")
+    global RAG_RUN_ID, _logger_instance
+    
+    if _logger_instance and RAG_RUN_ID:
+        # If already initialized, return existing
+        return _logger_instance, mlflow.active_run()
+
+    _logger_instance = MLflowLogger(experiment_name="RAG_MediAssist")
     
     # Start run
-    run = logger.start_run(run_name=run_name)
+    run = _logger_instance.start_run(run_name=run_name)
     RAG_RUN_ID = run.info.run_id
 
     
-    # Define RAG Configuration
+    # Define RAG Configuration dynamically
     rag_config = {
         # Global
         "project": settings.PROJECT_NAME,
         "environment": settings.ENVIRONMENT,
         
-        # Chunking (Hardcoded for now, ideally matched with actual logic)
+        # Chunking
         "chunk_strategy": "markdown_header + paragraph_split",
-        "chunk_max_tokens": 500,
-        "chunk_overlap": 80,
+        "chunk_max_tokens": DEFAULT_CHUNK_SIZE,
+        "chunk_overlap": DEFAULT_CHUNK_OVERLAP,
         "chunk_token_estimation": "word_based",
         
         # Embedding
         "embedding_provider": "ollama",
         "embedding_model": settings.EMBEDDING_MODEL_NAME,
-        "embedding_dimension": 384, # all-MiniLM-L6-v2 is 384
+        "embedding_dimension": 384, # Assumed for connection check, strictly ideally dynamic but acceptable here
         "embedding_normalization": True,
         
         # Retrieval
         "retrieval_vector_db": "qdrant",
         "retrieval_distance": "cosine",
-        "retrieval_top_k": 10, # default
+        "retrieval_top_k": 10,
         "retrieval_reranking": False,
         
         # LLM
@@ -50,6 +62,6 @@ def log_rag_experiment(run_name: str = "rag_pipeline"):
     }
     
     # Log all params
-    logger.log_rag_config(rag_config)
+    _logger_instance.log_rag_config(rag_config)
     
-    return logger, run
+    return _logger_instance, run

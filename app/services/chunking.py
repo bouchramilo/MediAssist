@@ -12,12 +12,15 @@ from app.utils.logger import AppLogger
 
 
 
+DEFAULT_CHUNK_SIZE = 500
+DEFAULT_CHUNK_OVERLAP = 80
+
 logger = AppLogger.get_logger(__name__)
 
 def estimate_tokens(text: str) -> int:
     return len(text.split())
 
-def split_by_paragraph(text: str, max_tokens: int = 500, overlap: int = 80) -> List[str]:
+def split_by_paragraph(text: str, max_tokens: int = DEFAULT_CHUNK_SIZE, overlap: int = DEFAULT_CHUNK_OVERLAP) -> List[str]:
     paragraphs = text.split("\n\n")
     chunks = []
     current = ""
@@ -42,7 +45,7 @@ def chunk_markdown_document(
     text: str,
     source: str,
     page: int = 1,
-    max_tokens: int = 500
+    max_tokens: int = DEFAULT_CHUNK_SIZE
 ) -> List[Dict]:
     """
     Split a markdown text based on headers (## or ###) and then by paragraphs if needed.
@@ -103,7 +106,7 @@ def split_documents(documents: List[Document]) -> List[Document]:
                 text=doc.page_content,
                 source=source,
                 page=page,
-                max_tokens=500
+                max_tokens=DEFAULT_CHUNK_SIZE
             )
 
             for chunk_data in chunk_dicts:

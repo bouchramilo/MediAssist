@@ -1,7 +1,7 @@
 from app.services.rag_pipeline import initialize_rag_system
 from app.utils.logger import AppLogger
 from app.mlops.evaluation import evaluate_rag
-from app.mlops.mlflow_logger import MLflowLogger
+
 from app.mlops import tracking
 import mlflow
 
@@ -30,8 +30,12 @@ async def ask_question(question: str):
         
         # MLOps: Evaluation & Logging
         try:
+            # Debug: Attempting MLOps logging
             logger.info(f"DEBUG: Attempting MLOps logging. RAG_RUN_ID={tracking.RAG_RUN_ID}")
-            if tracking.RAG_RUN_ID:
+            
+            mlflow_logger = tracking.get_current_logger()
+            
+            if tracking.RAG_RUN_ID and mlflow_logger:
                 chunk_texts = [doc.page_content for doc in source_docs]
                 
                 # Evaluate
@@ -43,13 +47,15 @@ async def ask_question(question: str):
                 )
                 logger.info(f"DEBUG: Evaluation complete. Metrics: {metrics}")
                 
-                # Log to MLflow using the persistent run ID
-                mlflow_logger = MLflowLogger(run_id=tracking.RAG_RUN_ID)
+                # Log to MLflow using the persistent logger
+                print(f"DEBUG: Logging metrics to MLflow run {tracking.RAG_RUN_ID}: {metrics}")
                 mlflow_logger.log_metrics(metrics)
                 logger.info("DEBUG: Metrics logged to MLflow.")
                 
                 # Log conversation pair
-                mlflow_logger.log_text(f"Q: {question}\nA: {answer}", f"conversation_{len(question)}.txt")
+                artifact_filename = f"conversation_{tracking.RAG_RUN_ID}.txt"
+                print(f"DEBUG: Logging conversation artifact: {artifact_filename}")
+                mlflow_logger.log_text(f"Q: {question}\nA: {answer}", artifact_filename)
             else:
                 logger.warning("No active RAG run found (tracking.RAG_RUN_ID is None). Skipping logging.")
                 

@@ -42,10 +42,12 @@ def initialize_rag_system(force_recreate_db=False):
         logger.info("Loading documents...")
         documents = load_pdf()
         mlflow_logger.log_metrics({"nb_documents_loaded": len(documents)})
+        print(f"🚩==========> nb_documents_loaded : ", len(documents))
         
         logger.info(f"Splitting {len(documents)} documents...")
         chunks = split_documents(documents)
         mlflow_logger.log_metrics({"nb_chunks_created": len(chunks)})
+        print(f"🚩==========> nb_chunks_created : ", len(chunks))
         
         logger.info("Storing embeddings in Qdrant...")
         store_embeddings(chunks)
@@ -59,16 +61,6 @@ def initialize_rag_system(force_recreate_db=False):
     
     rag_chain = create_rag_chain(retriever, llm)
 
-    #  Logger le pipeline complet LangChain
-    if run:
-        try:
-            mlflow.langchain.log_model(
-                rag_chain,
-                artifact_path="rag_pipeline"
-            )
-        except Exception as e:
-            logger.warning(f"❌❌❌❌❌Failed to log LangChain model to MLflow: {e}")
-
-    logger.info("RAG SYSTEM READY!")
+    
 
     return rag_chain
