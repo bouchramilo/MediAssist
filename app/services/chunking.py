@@ -8,6 +8,10 @@ except ImportError:
     from langchain.schema import Document
 from app.utils.logger import AppLogger
 
+
+
+
+
 logger = AppLogger.get_logger(__name__)
 
 def estimate_tokens(text: str) -> int:
@@ -87,35 +91,34 @@ def split_documents(documents: List[Document]) -> List[Document]:
         return []
 
     logger.info(f"Splitting {len(documents)} documents into chunks (hierarchical)...")
-    
+
     all_chunks = []
-    
+
     try:
         for doc in documents:
-            
             source = doc.metadata.get("source", "unknown")
             page = doc.metadata.get("page", 1)
-            
+
             chunk_dicts = chunk_markdown_document(
-                text=doc.page_content, 
-                source=source, 
-                page=page, 
+                text=doc.page_content,
+                source=source,
+                page=page,
                 max_tokens=500
             )
-            
+
             for chunk_data in chunk_dicts:
                 combined_metadata = doc.metadata.copy()
                 combined_metadata.update(chunk_data["metadata"])
-                
+
                 new_doc = Document(
                     page_content=chunk_data["content"],
                     metadata=combined_metadata
                 )
                 all_chunks.append(new_doc)
-            
+
         logger.info(f"Chunking completed: {len(all_chunks)} chunks created.")
         return all_chunks
-        
+
     except Exception as e:
         logger.exception("❌ Error during document chunking")
         raise RuntimeError("Chunking failed") from e

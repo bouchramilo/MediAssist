@@ -5,7 +5,6 @@ import os
 from langchain_community.document_loaders import PyPDFDirectoryLoader
 from app.utils.logger import AppLogger
 
-
 logger = AppLogger.get_logger(__name__)
 
 DATA_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../data"))

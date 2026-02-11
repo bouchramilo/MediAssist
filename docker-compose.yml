@@ -13,10 +13,13 @@ services:
       - ENVIRONMENT=development
       - OLLAMA_BASE_URL=http://ollama:11434
       - QDRANT_URL=http://vector_db:6333
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
     depends_on:
       db:
         condition: service_healthy
       ollama:
+        condition: service_started
+      mlflow:
         condition: service_started
     networks:
       - mediassist_network
@@ -61,6 +64,45 @@ services:
       - mediassist_network
     volumes:
       - qdrant_storage:/qdrant/storage
+  
+  mlflow-db:
+    image: postgres:15-alpine
+    container_name: mediassist__db
+    expose:
+      - "5432"
+    environment:
+      - POSTGRES_USER=mlflow
+      - POSTGRES_PASSWORD=mlflow
+      - POSTGRES_DB=mlflow
+    volumes:
+      - mlflow_db_data:/var/lib/postgresql/data
+    networks:
+      - mediassist_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mlflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
+    container_name: mediassist_mlflow
+    ports:
+      - "5000:5000"
+    depends_on:
+      mlflow-db:
+        condition: service_healthy
+    environment:
+      - MLFLOW_BACKEND_STORE_URI=postgresql://mlflow:mlflow@mlflow-db:5432/mlflow
+      - MLFLOW_ARTIFACT_ROOT=/app/mlruns
+    command: mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri postgresql://mlflow:mlflow@mlflow-db:5432/mlflow --default-artifact-root /app/mlruns
+    volumes:
+      - ./mlruns:/app/mlruns
+    networks:
+      - mediassist_network
+    restart: always
 
 networks:
   mediassist_network:
@@ -70,3 +112,4 @@ volumes:
   postgres_data:
   qdrant_storage:
   ollama_storage:
+  mlflow_db_data:

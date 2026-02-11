@@ -7,6 +7,8 @@ from app.config import settings
 from app.utils.logger import AppLogger
 from typing import List, Optional, Dict
 
+
+
 try:
     from langchain_core.documents import Document
 except ImportError:
@@ -37,6 +39,10 @@ def create_qdrant_collection():
         )
     )
     
+    
+    # MLflow logging
+
+    
     logger.info(f"Collection '{settings.QDRANT_COLLECTION_NAME}' créée")
     return True
 
@@ -56,6 +62,8 @@ def store_embeddings(chunks: List[Document]):
             force_recreate=False
         )
         
+
+        
         logger.info(f"{len(chunks)} documents stockés")
         return True
         
@@ -74,14 +82,19 @@ def get_vector_store():
     )
 
 def search_semantic(query: str, top_k: int = 10, filters: Optional[Dict] = None):
-    """Recherche sémantique (par similarité vectorielle)"""
     vector_store = get_vector_store()
-    
-    return vector_store.similarity_search_with_score(
+
+    results = vector_store.similarity_search_with_score(
         query=query,
         k=top_k,
         filter=filters
     )
+
+    # MLflow logging
+
+
+    return results
+
 
 def search_keyword(query: str, filters: Optional[Dict] = None, top_k: int = 10):
     """Recherche par mots-clés (via filtres Qdrant)"""
@@ -118,37 +131,38 @@ def search_keyword(query: str, filters: Optional[Dict] = None, top_k: int = 10):
             'metadata': point.payload.get('metadata', {}),
             'score': 0.5 
         })
+        
+
+
     
     return formatted_results
 
 def search_hybrid(query: str, top_k: int = 10, alpha: float = 0.7):
     """Recherche hybride: combine sémantique et mots-clés"""
-    # 1. Recherche sémantique
-    semantic_results = search_semantic(query, top_k=top_k*2)
-    
-    # 2. Recherche par mots-clés
-    keyword_results = search_keyword(query, top_k=top_k*2)
-    
-    # 3. Fusion simple 
+
+    semantic_results = search_semantic(query, top_k=top_k * 2)
+    keyword_results = search_keyword(query, top_k=top_k * 2)
+
     all_results = []
-    
-    # Ajouter les résultats sémantiques
+
     for doc, score in semantic_results:
         all_results.append({
-            'doc': doc,
-            'score': score * alpha,
-            'type': 'semantic'
+            "doc": doc,
+            "score": score * alpha,
+            "type": "semantic"
         })
-    
-    # Ajouter les résultats mots-clés 
+
     for result in keyword_results:
         all_results.append({
-            'doc': result,
-            'score': result['score'] * (1 - alpha),
-            'type': 'keyword'
+            "doc": result["doc"],
+            "score": result["score"] * (1 - alpha),
+            "type": "keyword"
         })
-    
-    # Trier par score et retourner les top_k
-    all_results.sort(key=lambda x: x['score'], reverse=True)
-    
-    return [result['doc'] for result in all_results[:top_k]]
+
+    all_results.sort(key=lambda x: x["score"], reverse=True)
+    final_results = all_results[:top_k]
+
+    #  MLflow logging
+
+
+    return [r["doc"] for r in final_results]
