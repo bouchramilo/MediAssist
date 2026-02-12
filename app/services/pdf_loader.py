@@ -1,5 +1,4 @@
-# Charge les PDF
-# Extrait le texte (LangChain)
+# pdf_loader.py
 
 import os
 from langchain_community.document_loaders import PyPDFDirectoryLoader

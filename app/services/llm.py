@@ -1,3 +1,5 @@
+# llm.py
+
 from langchain_ollama import ChatOllama
 from app.config.config import settings
 from app.utils.logger import AppLogger
@@ -19,10 +21,10 @@ def create_llm() -> ChatOllama:
         llm = ChatOllama(
             model=settings.OLLAMA_MODEL,
             base_url=settings.OLLAMA_BASE_URL,
-            temperature=0.2,
-            num_predict=1024,
-            top_p=0.9,
-            repeat_penalty=1.1,
+            temperature=settings.LLM_TEMPERATURE,
+            num_predict=settings.LLM_NUM_PREDICT,
+            top_p=settings.LLM_TOP_P,
+            repeat_penalty=settings.LLM_REPEAT_PENALTY,
         )
         logger.info("Ollama LLM connected successfully.")
         return llm

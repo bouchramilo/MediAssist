@@ -1,66 +1,51 @@
-from deepeval.metrics import (
-    AnswerRelevancyMetric,
-    FaithfulnessMetric,
-    ContextualPrecisionMetric,
-    ContextualRecallMetric
-)
-from deepeval.test_case import LLMTestCase
+# app/mlops/evaluation.py
 
+from deepeval.metrics import AnswerRelevancyMetric, FaithfulnessMetric
+from deepeval.test_case import LLMTestCase
 from app.mlops.deepeval_llm import DeepEvalOllamaLLM
+from app.utils.logger import AppLogger
+
+logger = AppLogger.get_logger(__name__)
 
 def evaluate_rag(query: str, response: str, context: list):
     """
     Evaluate RAG performance using DeepEval metrics.
-    
-    Args:
-        query (str): The user query
-        response (str): The generated response
-        context (list): List of strings representing the retrieved context
-    
-    Returns:
-        dict: calculated metrics
     """
+    metrics = {
+        "answer_relevance": 0.0,
+        "faithfulness": 0.0
+    }
     
-    # Create test case for DeepEval
-    test_case = LLMTestCase(
-        input=query,
-        actual_output=response,
-        retrieval_context=context
-    )
-
-    metrics = {}
-    
-    # Initialize Custom LLM
     try:
+        # Create test case
+        test_case = LLMTestCase(
+            input=query,
+            actual_output=response,
+            retrieval_context=context
+        )
+
+        # Initialize LLM
         ollama_llm = DeepEvalOllamaLLM()
-        print(f"DEBUG: Initialized DeepEvalOllamaLLM with model {ollama_llm.get_model_name()}")
+        
+        # Calculate Answer Relevancy
+        try:
+            answer_relevance = AnswerRelevancyMetric(model=ollama_llm)
+            answer_relevance.measure(test_case)
+            metrics["answer_relevance"] = answer_relevance.score
+            logger.info(f"Answer Relevancy: {answer_relevance.score}")
+        except Exception as e:
+            logger.warning(f"AnswerRelevancy failed: {e}")
+
+        # Calculate Faithfulness
+        try:
+            faithfulness = FaithfulnessMetric(model=ollama_llm)
+            faithfulness.measure(test_case)
+            metrics["faithfulness"] = faithfulness.score
+            logger.info(f"Faithfulness: {faithfulness.score}")
+        except Exception as e:
+            logger.warning(f"Faithfulness failed: {e}")
+
     except Exception as e:
-        print(f"DEBUG: Failed to initialize DeepEvalOllamaLLM: {e}")
-        raise
-
-    # Calculate Answer Relevancy
-    print(f"DEBUG: Calculating Answer Relevancy for query='{query[:50]}...'")
-    answer_relevance = AnswerRelevancyMetric(model=ollama_llm)
-    answer_relevance.measure(test_case)
-    print(f"DEBUG: Answer Relevancy Score: {answer_relevance.score}")
-    metrics["answer_relevance"] = answer_relevance.score
-
-    # Calculate Faithfulness
-    # Faithfulness also requires an LLM
-    print("DEBUG: Calculating Faithfulness...")
-    faithfulness = FaithfulnessMetric(model=ollama_llm)
-    faithfulness.measure(test_case)
-    print(f"DEBUG: Faithfulness Score: {faithfulness.score}")
-    metrics["faithfulness"] = faithfulness.score
-
-    # Calculate Contextual Precision
-    # precision = ContextualPrecisionMetric(threshold=0.7)
-    # precision.measure(test_case)
-    # metrics["precision_at_k"] = precision.score
-
-    # Calculate Contextual Recall
-    # recall = ContextualRecallMetric()
-    # recall.measure(test_case)
-    # metrics["recall_at_k"] = recall.score
-
+        logger.error(f"Evaluation failed: {e}")
+    
     return metrics
