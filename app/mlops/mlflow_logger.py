@@ -1,3 +1,5 @@
+# app/mlops/mlflow_logger.py
+
 import mlflow
 from mlflow.tracking import MlflowClient
 from typing import Dict, Any, Optional
@@ -8,8 +10,8 @@ class MLflowLogger:
         self.client = MlflowClient()
         self.run_id = run_id
         if not run_id:
-             mlflow.set_experiment(experiment_name)
-             self.experiment = mlflow.get_experiment_by_name(experiment_name)
+            mlflow.set_experiment(experiment_name)
+            self.experiment = mlflow.get_experiment_by_name(experiment_name)
 
     def start_run(self, run_name: str):
         run = mlflow.start_run(run_name=run_name)
@@ -18,16 +20,19 @@ class MLflowLogger:
 
     def end_run(self):
         mlflow.end_run()
+        self.run_id = None
 
     def log_rag_config(self, config: Dict[str, Any]):
-        """
-        Log configuration complète du pipeline RAG
-        """
+        """Log configuration complète du pipeline RAG"""
+        self.log_params(config)  # Réutilise log_params
+
+    def log_params(self, params: Dict[str, Any]):
+        """Log parameters to MLflow"""
         if self.run_id:
-            for k, v in config.items():
+            for k, v in params.items():
                 self.client.log_param(self.run_id, k, str(v))
         else:
-            mlflow.log_params(config)
+            mlflow.log_params(params)
 
     def log_metrics(self, metrics: Dict[str, float]):
         if self.run_id:
@@ -47,6 +52,5 @@ class MLflowLogger:
             self.client.log_text(self.run_id, text, artifact_file)
         else:
             mlflow.log_text(text, artifact_file)
-
 
 logger = MLflowLogger(experiment_name="RAG_MediAssist")

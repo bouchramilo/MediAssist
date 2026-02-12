@@ -1,14 +1,14 @@
+# app/services/rag_pipeline.py - Déjà bon avec vos modifications
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel
 from langchain_core.output_parsers import StrOutputParser
 from app.services.prompt import get_prompt
 from app.services.llm import create_llm
-from app.services.vector_store import store_embeddings, search_semantic
-from app.services.vector_store import get_vector_store
+from app.services.vector_store import store_embeddings
 from app.services.chunking import split_documents
 from app.services.pdf_loader import load_pdf
 from app.services.utils import format_docs
 from app.utils.logger import AppLogger
-
+from app.services.retriever import create_retriever
 
 logger = AppLogger.get_logger(__name__)
 
@@ -28,23 +28,19 @@ def create_rag_chain(retriever, llm):
 
     return rag_chain_with_source
 
-
-def initialize_rag_system(force_recreate_db=False):
+def initialize_rag_system(force_recreate_db=False, retriever_top_k: int = 5, retriever_alpha: float = 0.7):
+    """
+    Initialise le système RAG avec possibilité d'utiliser un retriever hybride.
+    """
     logger.info("INITIALIZING RAG SYSTEM")
-
-    # Initialize MLOps Tracking
-    
-    
 
     if force_recreate_db:
         logger.info("Loading documents...")
         documents = load_pdf()
-        # mlflow_logger.log_metrics({"nb_documents_loaded": len(documents)})
         print(f"🚩==========> nb_documents_loaded : ", len(documents))
         
         logger.info(f"Splitting {len(documents)} documents...")
         chunks = split_documents(documents)
-        # mlflow_logger.log_metrics({"nb_chunks_created": len(chunks)})
         print(f"🚩==========> nb_chunks_created : ", len(chunks))
         
         logger.info("Storing embeddings in Qdrant...")
@@ -52,13 +48,12 @@ def initialize_rag_system(force_recreate_db=False):
     else:
         logger.info("Skipping document loading (force_recreate_db=False). Assuming VectorDB is populated.")
 
-    vectorstore = get_vector_store()
-    retriever = vectorstore.as_retriever()
+    # Utilisation de votre retriever hybride
+    logger.info(f"Creating HybridRetriever with top_k={retriever_top_k}, alpha={retriever_alpha}")
+    retriever = create_retriever(top_k=retriever_top_k, alpha=retriever_alpha)
     
     llm = create_llm()
     
     rag_chain = create_rag_chain(retriever, llm)
-
-    
 
     return rag_chain

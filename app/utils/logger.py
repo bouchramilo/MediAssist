@@ -7,7 +7,7 @@ class AppLogger():
     @staticmethod
     def setup_logging(level=logging.INFO):
         
-        log_format = '%(asctime)s - %(name)s - %(levelname)s - [%(funcName)s:%(lineno)d] - %(message)s'
+        log_format = '🟢%(asctime)s - %(name)s - %(levelname)s - [%(funcName)s:%(lineno)d] - %(message)s'
         
         logging.basicConfig(
             level=level,

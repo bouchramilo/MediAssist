@@ -1,3 +1,5 @@
+# app/services/vector_store.py
+
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams
@@ -5,9 +7,8 @@ from qdrant_client.http import models
 from app.services.embeddings import get_embedding_function
 from app.config import settings
 from app.utils.logger import AppLogger
-from typing import List, Optional, Dict
-
-
+from typing import List, Optional, Dict, Tuple
+import uuid
 
 try:
     from langchain_core.documents import Document
@@ -39,10 +40,6 @@ def create_qdrant_collection():
         )
     )
     
-    
-    # MLflow logging
-
-    
     logger.info(f"Collection '{settings.QDRANT_COLLECTION_NAME}' créée")
     return True
 
@@ -62,8 +59,6 @@ def store_embeddings(chunks: List[Document]):
             force_recreate=False
         )
         
-
-        
         logger.info(f"{len(chunks)} documents stockés")
         return True
         
@@ -81,88 +76,104 @@ def get_vector_store():
         embedding=embeddings
     )
 
-def search_semantic(query: str, top_k: int = 10, filters: Optional[Dict] = None):
+def search_semantic(query: str, top_k: int = 10, filters: Optional[Dict] = None) -> List[Tuple[Document, float]]:
+    """Recherche sémantique avec scores de similarité"""
     vector_store = get_vector_store()
-
+    
     results = vector_store.similarity_search_with_score(
         query=query,
         k=top_k,
         filter=filters
     )
-
-    # MLflow logging
-
-
+    
+    # Les résultats sont déjà sous forme (Document, score)
     return results
 
-
-def search_keyword(query: str, filters: Optional[Dict] = None, top_k: int = 10):
-    """Recherche par mots-clés (via filtres Qdrant)"""
+def search_keyword(query: str, top_k: int = 10) -> List[Document]:
+    """Recherche par mots-clés en utilisant le payload de Qdrant"""
+    client = QdrantClient(url=settings.QDRANT_URL)
+    
+    
+    all_points = client.scroll(
+        collection_name=settings.QDRANT_COLLECTION_NAME,
+        limit=1000,
+        with_payload=True
+    )[0]
+    
     keywords = [word.lower() for word in query.split() if len(word) > 3]
     
-    if not keywords:
-        return []
-    
-    filter_condition = models.Filter(
-        should=[
-            models.FieldCondition(
-                key="metadata.keywords",
-                match=models.MatchValue(value=keyword)
-            )
-            for keyword in keywords[:5]
-        ]
-    )
-    
-    if filters:
-        pass
-    
-    client = QdrantClient(url=settings.QDRANT_URL)
-    results = client.scroll(
-        collection_name=settings.QDRANT_COLLECTION_NAME,
-        scroll_filter=filter_condition,
-        limit=top_k,
-        with_payload=True
-    )
-    
-    formatted_results = []
-    for point in results[0]:
-        formatted_results.append({
-            'content': point.payload.get('page_content', ''),
-            'metadata': point.payload.get('metadata', {}),
-            'score': 0.5 
-        })
+    scored_results = []
+    for point in all_points:
+        content = point.payload.get('page_content', '').lower()
+        metadata = point.payload.get('metadata', {})
         
-
-
+        # Calculer un score basé sur la présence des mots-clés
+        score = 0
+        for keyword in keywords:
+            if keyword in content:
+                score += content.count(keyword)
+        
+        if score > 0:
+            doc = Document(
+                page_content=point.payload.get('page_content', ''),
+                metadata=metadata
+            )
+            # Normaliser le score
+            normalized_score = min(score / len(keywords), 1.0)
+            scored_results.append((doc, normalized_score))
     
-    return formatted_results
+    # Trier par score et limiter
+    scored_results.sort(key=lambda x: x[1], reverse=True)
+    return scored_results[:top_k]
 
-def search_hybrid(query: str, top_k: int = 10, alpha: float = 0.7):
-    """Recherche hybride: combine sémantique et mots-clés"""
-
+def search_hybrid(query: str, top_k: int = 5, alpha: float = 0.7) -> List[Document]:
+    """Recherche hybride: combine sémantique et mots-clés avec pondération alpha
+    alpha = poids de la recherche sémantique (0-1)
+    """
+    logger.info(f"Hybrid search: query='{query}', top_k={top_k}, alpha={alpha}")
+    
+    # Recherche sémantique
     semantic_results = search_semantic(query, top_k=top_k * 2)
+    
+    logger.info(f"😊😊 semantic_results : {semantic_results}")
+    
+    # Recherche par mots-clés
     keyword_results = search_keyword(query, top_k=top_k * 2)
-
-    all_results = []
-
+    
+    logger.info(f"😊😊 keyword_results : {keyword_results}")
+    
+    # Dictionnaire pour fusionner les résultats
+    merged_results = {}
+    
+    # Ajouter les résultats sémantiques avec poids alpha
     for doc, score in semantic_results:
-        all_results.append({
-            "doc": doc,
-            "score": score * alpha,
-            "type": "semantic"
-        })
-
-    for result in keyword_results:
-        all_results.append({
-            "doc": result["doc"],
-            "score": result["score"] * (1 - alpha),
-            "type": "keyword"
-        })
-
-    all_results.sort(key=lambda x: x["score"], reverse=True)
-    final_results = all_results[:top_k]
-
-    #  MLflow logging
-
-
-    return [r["doc"] for r in final_results]
+        doc_id = doc.metadata.get('_id', str(uuid.uuid4()))
+        merged_results[doc_id] = {
+            'doc': doc,
+            'score': score * alpha
+        }
+    
+    # Ajouter les résultats keywords avec poids (1-alpha)
+    for doc, score in keyword_results:
+        doc_id = doc.metadata.get('_id', str(uuid.uuid4()))
+        if doc_id in merged_results:
+            merged_results[doc_id]['score'] += score * (1 - alpha)
+        else:
+            merged_results[doc_id] = {
+                'doc': doc,
+                'score': score * (1 - alpha)
+            }
+    
+    # Trier par score décroissant
+    sorted_results = sorted(
+        merged_results.values(),
+        key=lambda x: x['score'],
+        reverse=True
+    )
+    
+    # Limiter au top_k
+    final_docs = [item['doc'] for item in sorted_results[:top_k]]
+    logger.info(f"🔎🔎🔎🔎 Hybrid search - final_docs : {final_docs}")
+    
+    logger.info(f"🔎 Hybrid search returned {len(final_docs)} documents")
+    return final_docs

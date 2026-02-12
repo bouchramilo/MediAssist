@@ -1,3 +1,4 @@
+# tracking.py
 from typing import Optional, Tuple, Dict, Any
 import mlflow
 from app.mlops.mlflow_logger import MLflowLogger
@@ -11,10 +12,8 @@ def create_query_run(run_name_prefix: str = "query") -> Tuple[MLflowLogger, mlfl
     """
     logger_instance = MLflowLogger(experiment_name="RAG_MediAssist")
     
-    # Start run with a dynamic name or let MLflow handle it
     run = logger_instance.start_run(run_name=run_name_prefix)
     
-    # Define RAG Configuration dynamically
     rag_config = {
         # Global
         "project": settings.PROJECT_NAME,
@@ -27,22 +26,22 @@ def create_query_run(run_name_prefix: str = "query") -> Tuple[MLflowLogger, mlfl
         "chunk_token_estimation": "word_based",
         
         # Embedding
-        "embedding_provider": "ollama",
         "embedding_model": settings.EMBEDDING_MODEL_NAME,
-        "embedding_dimension": 384,
-        "embedding_normalization": True,
+        "embedding_dimension": settings.EMBEDDING_DIMENSION,
         
         # Retrieval
         "retrieval_vector_db": "qdrant",
         "retrieval_distance": "cosine",
-        "retrieval_top_k": 10,
-        "retrieval_reranking": False,
+        "retrieval_top_k": settings.RETRIEVAL_TOP_K,
+        "retrieval_reranking": settings.RETRIEVAL_RERANKING,
         
         # LLM
         "llm_model": settings.OLLAMA_MODEL,
         "llm_base_url": settings.OLLAMA_BASE_URL,
-        "llm_temperature": 0.2,
-        "llm_top_p": 0.9,
+        "llm_temperature": settings.LLM_TEMPERATURE,
+        "llm_top_p": settings.LLM_TOP_P,
+        "llm_repeat_penalty": settings.LLM_REPEAT_PENALTY,
+        "llm_num_predict": settings.LLM_NUM_PREDICT,
         "llm_template": "rag_prompt_v1"
     }
     

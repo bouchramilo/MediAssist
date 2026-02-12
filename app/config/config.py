@@ -29,6 +29,14 @@ class Settings(BaseSettings):
     # Ollama Configuration
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "llama3.1"
+    LLM_NUM_PREDICT: int = 1024
+    LLM_REPEAT_PENALTY: float = 1.1
+    
+    RETRIEVAL_RERANKING: bool = True
+    RETRIEVAL_TOP_K: int = 5
+    LLM_TEMPERATURE: float = 0.2
+    LLM_TOP_P: float = 0.9
+    EMBEDDING_DIMENSION: int = 384
     
     ENVIRONMENT: str = "dev"
     
