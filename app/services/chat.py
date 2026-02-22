@@ -7,6 +7,15 @@ from app.mlops import tracking
 import mlflow
 from datetime import datetime
 import json
+import time
+
+from app.metrics import (
+    RAG_REQUEST_TOTAL, 
+    RAG_PROCESSING_TIME, 
+    RAG_METRIC_FAITHFULNESS, 
+    RAG_METRIC_ANSWER_RELEVANCE,
+    RAG_DOCS_RETRIEVED
+)
 
 logger = AppLogger.get_logger(__name__)
 
@@ -33,7 +42,10 @@ async def ask_question(question: str, top_k: int = 5, alpha: float = 0.7):
     """
     Pose une question au système RAG et retourne la réponse avec les sources.
     """
+    start_time = time.time()
     try:
+        RAG_REQUEST_TOTAL.labels(status="success").inc()
+        logger.info("📈 Prometheus Metric: rag_request_total(status='success') incremented")
         chain = get_qa_chain(
             force_recreate_db=False,
             use_hybrid=True,
@@ -46,6 +58,9 @@ async def ask_question(question: str, top_k: int = 5, alpha: float = 0.7):
         
         answer = res["answer"]
         source_docs = res["context"]
+        num_docs = len(source_docs)
+        RAG_DOCS_RETRIEVED.observe(num_docs)
+        logger.info(f"🔍 Prometheus Metric: rag_docs_retrieved_count observed value: {num_docs}")
         
         # Extraction des sources uniques
         sources = list(set([
@@ -78,6 +93,16 @@ async def ask_question(question: str, top_k: int = 5, alpha: float = 0.7):
             
             # Log des métriques
             mlflow_logger.log_metrics(metrics)
+            
+            # Prometheus Metrics Update
+            if "Faithfulness" in metrics:
+                val = metrics["Faithfulness"]
+                RAG_METRIC_FAITHFULNESS.labels(model="rag_v1").set(val)
+                logger.info(f"⚖️ Prometheus Metric: rag_metric_faithfulness set to {val}")
+            if "Answer Relevance" in metrics:
+                val = metrics["Answer Relevance"]
+                RAG_METRIC_ANSWER_RELEVANCE.labels(model="rag_v1").set(val)
+                logger.info(f"🎯 Prometheus Metric: rag_metric_answer_relevance set to {val}")
             
             # Log des paramètres du retriever
             mlflow_logger.log_rag_config({
@@ -204,9 +229,14 @@ async def ask_question(question: str, top_k: int = 5, alpha: float = 0.7):
         }
         
     except Exception as e:
+        RAG_REQUEST_TOTAL.labels(status="error").inc()
+        logger.info("❌ Prometheus Metric: rag_request_total(status='error') incremented")
         logger.error(f"Error in ask_question: {e}")
         return {
             "answer": f"Une erreur est survenue lors du traitement de votre demande : {e}",
             "sources": [],
             "num_chunks": 0
         }
+    finally:
+        total_time = time.time() - start_time
+        RAG_PROCESSING_TIME.observe(total_time)

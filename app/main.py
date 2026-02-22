@@ -4,6 +4,7 @@ from app.services.chat import ask_question
 from app.api import user, admin, chat, documents
 from app.config.database import init_db
 from app.services.vector_store import create_qdrant_collection
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from contextlib import asynccontextmanager
 
@@ -23,6 +24,9 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     lifespan=lifespan
 )
+
+# Instrumentator pour les métriques (CPU, RAM, HTTP Latency)
+instrumentator = Instrumentator().instrument(app).expose(app)
 
 @app.get("/")
 async def root():

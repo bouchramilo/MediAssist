@@ -179,3 +179,142 @@ spec:
       volumes:
         - name: mlflow-storage
           emptyDir: {}
+
+---
+
+# Prometheus Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+    scrape_configs:
+      - job_name: 'api'
+        scrape_interval: 5s
+        static_configs:
+          - targets: ['mediassist-backend-service:8000']
+      - job_name: 'cadvisor'
+        scrape_interval: 5s
+        static_configs:
+          - targets: ['cadvisor:8080']
+    rule_files:
+      - "/etc/prometheus/alert.rules.yml"
+  alert.rules.yml: |
+    groups:
+    - name: mlops-alerts
+      rules:
+      - alert: HighRequestLatency
+        expr: rag_processing_seconds_sum / rag_processing_seconds_count > 5
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High RAG Request Latency"
+          description: "Average RAG request processing time is > 5s"
+      - alert: HighErrorRate
+        expr: rate(rag_request_total{status="error"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High RAG Error Rate"
+          description: "RAG requests are failing"
+      - alert: LowFaithfulness
+        expr: rag_metric_faithfulness < 0.7
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low RAG Faithfulness"
+          description: "RAG Faithfulness score is below 0.7"
+
+---
+
+# Prometheus Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus-deployement
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+  template:
+    metadata:
+      labels:
+        app: prometheus
+    spec:
+      containers:
+        - name: prometheus
+          image: prom/prometheus
+          ports:
+            - containerPort: 9090
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/prometheus
+      volumes:
+        - name: config-volume
+          configMap:
+            name: prometheus-config
+
+---
+
+# Prometheus Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-svc
+spec:
+  selector:
+    app: prometheus
+  ports:
+    - protocol: TCP
+      port: 9090
+      targetPort: 9090
+
+---
+
+# Grafana Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana-deployement
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana
+          ports:
+            - containerPort: 3000
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              value: "admin"
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              value: "admin"
+
+---
+
+# Grafana Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-svc
+spec:
+  selector:
+    app: grafana
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
