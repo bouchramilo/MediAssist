@@ -78,14 +78,14 @@ def test_search_keyword(mock_qdrant_client):
     
     client_instance = mock_qdrant_client.return_value
     mock_point = Mock()
-    mock_point.payload = {'page_content': 'result', 'metadata': {}}
+    mock_point.payload = {'page_content': 'this is a test keyword result', 'metadata': {}}
     client_instance.scroll.return_value = ([mock_point], None)
     
     # Execute
     results = search_keyword("test keyword")
     
     assert len(results) == 1
-    assert results[0]['content'] == 'result'
+    assert results[0][0].page_content == 'this is a test keyword result'
     client_instance.scroll.assert_called_once()
 
 def test_search_hybrid(mock_qdrant_client, mock_vector_store_embeddings, mock_langchain_qdrant):

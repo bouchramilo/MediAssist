@@ -8,6 +8,10 @@ def test_create_llm_success(mock_settings, mock_ollama_class):
     # Mock settings
     mock_settings.OLLAMA_MODEL = "llama3.1"
     mock_settings.OLLAMA_BASE_URL = "http://test-ollama:11434"
+    mock_settings.LLM_TEMPERATURE = 0.2
+    mock_settings.LLM_NUM_PREDICT = 1024
+    mock_settings.LLM_TOP_P = 0.9
+    mock_settings.LLM_REPEAT_PENALTY = 1.1
     
     # Execute
     llm = create_llm()
