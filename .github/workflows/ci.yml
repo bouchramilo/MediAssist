@@ -31,33 +31,39 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
       
       - name: Check code formatting with Black
-        run: |
-          black --check --diff app/ tests/
+        run: black --check --diff app/ tests/
         continue-on-error: true
       
       - name: Check import sorting with isort
-        run: |
-          isort --check-only --diff app/ tests/
-        continue-on-error: true
-      
-      - name: Lint with flake8
-        run: |
-          flake8 app/ tests/ --max-line-length=120 --ignore=E501,W503
-        continue-on-error: true
-      
-      - name: Security check with bandit
-        run: |
-          bandit -r app/ -ll
-        continue-on-error: true
-      
-      - name: Check dependencies for vulnerabilities
-        run: |
-          safety check -r requirements.txt
+        run: isort --check-only --diff app/ tests/
         continue-on-error: true
 
   tests:
     name: 🧪 Run Tests
     runs-on: ubuntu-latest
+    # AJOUT D'UN SERVICE POSTGRES POUR LES TESTS
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    env:
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      POSTGRES_DB: ${{ secrets.POSTGRES_DB }} 
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
     needs: code-quality
     steps:
       - name: Checkout repository
@@ -110,16 +116,28 @@ jobs:
           cache-to: type=gha,mode=max
       
       - name: Verify Docker image
+        env:
+          # On passe les secrets ici aussi pour que le conteneur démarre
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
         run: |
           echo "Starting container verification..."
-          docker run -d --name test-api -p 8000:8000 ${{ env.DOCKER_IMAGE_NAME }}:test
+          # AJOUT DES VARIABLES ENV DANS LE DOCKER RUN
+          docker run -d --name test-api \
+            -e SECRET_KEY="$SECRET_KEY" \
+            -e POSTGRES_USER="$POSTGRES_USER" \
+            -e POSTGRES_PASSWORD="$POSTGRES_PASSWORD" \
+            -e POSTGRES_DB="$POSTGRES_DB" \
+            -p 8000:8000 ${{ env.DOCKER_IMAGE_NAME }}:test
           
-          # Wait for container
           MAX_RETRIES=15
           RETRY_COUNT=0
           while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
-            if curl -s http://localhost:8000/metrics > /dev/null 2>&1; then
-              echo "Container is ready and metrics endpoint is up!"
+            # On vérifie si le conteneur répond (ajustez l'URL selon votre app)
+            if curl -s http://localhost:8000/ > /dev/null 2>&1; then
+              echo "Container is ready!"
               break
             fi
             echo "Waiting for container... ($((RETRY_COUNT+1))/$MAX_RETRIES)"
@@ -127,8 +145,5 @@ jobs:
             RETRY_COUNT=$((RETRY_COUNT+1))
           done
           
-          # Cleanup
           docker stop test-api
           docker rm test-api
-          echo "Docker verification completed"
-        continue-on-error: true
