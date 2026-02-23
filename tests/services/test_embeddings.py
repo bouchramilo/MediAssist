@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import patch, Mock
 
 from app.services.embeddings import get_embedding_function
+from app.config import settings
 
 
 def test_get_embedding_function():
@@ -17,7 +18,7 @@ def test_get_embedding_function():
         # Vérifications
         mock_embeddings.assert_called_once_with(
             model="nomic-embed-text",
-            base_url="http://ollama:11434"
+            base_url=settings.OLLAMA_BASE_URL
         )
         assert result == mock_instance
         assert result is get_embedding_function()
@@ -34,7 +35,7 @@ def test_get_embedding_function_custom_model():
         
         mock_embeddings.assert_called_once_with(
             model="custom-model",
-            base_url="http://ollama:11434"
+            base_url=settings.OLLAMA_BASE_URL
         )
         assert result == mock_instance
 
